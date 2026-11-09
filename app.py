@@ -51,15 +51,38 @@ def login():
     if request.method == 'POST':
         nom = request.form.get('nom')
         jeton = request.form.get('jeton')
-        # On stocke en session pour simuler l'authentification par jeton (étape 2/3 du diagramme)
         session['user_nom'] = nom
         session['jeton'] = jeton
+        
+        # Envoi d'un log vers l'API
+        try:
+            requests.post(f"{API_BASE_URL}/logs", json={
+                "categorie": "AUTH",
+                "action": "CONNEXION",
+                "details": f"Connexion réussie de '{nom}' avec le jeton {jeton}",
+                "auteur": nom
+            }, timeout=3)
+        except requests.exceptions.RequestException:
+            pass
+
         flash(f"Connecté en tant que {nom} (Jeton actif : {jeton})", "success")
         return redirect(url_for('index'))
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
+    nom = session.get('user_nom', 'Anonyme')
+    # Envoi d'un log vers l'API avant nettoyage de la session
+    try:
+        requests.post(f"{API_BASE_URL}/logs", json={
+            "categorie": "AUTH",
+            "action": "DECONNEXION",
+            "details": f"Déconnexion du membre '{nom}'",
+            "auteur": nom
+        }, timeout=3)
+    except requests.exceptions.RequestException:
+        pass
+
     session.clear()
     flash("Vous avez été déconnecté.", "info")
     return redirect(url_for('index'))
@@ -288,6 +311,33 @@ def admin_supprimer_support(film_id, support_id):
         flash("Connexion à l'API impossible.", "danger")
         
     return redirect(url_for('detail_film', film_id=film_id))
+
+
+
+# =======================
+# === Système de logs ===
+# =======================
+
+@app.route('/admin/logs')
+def admin_logs():
+    # Protection : accessible uniquement si connecté avec jeton
+    if not session.get('jeton'):
+        flash("Accès réservé aux administrateurs connectés.", "danger")
+        return redirect(url_for('login'))
+
+    filtre_cat = request.args.get('categorie', '')
+    
+    try:
+        resp = requests.get(f"{API_BASE_URL}/logs", timeout=5)
+        logs = resp.json() if resp.status_code == 200 else []
+    except requests.exceptions.RequestException:
+        flash("Impossible de joindre le service de logs de l'API.", "danger")
+        logs = []
+
+    if filtre_cat:
+        logs = [l for l in logs if l.get('categorie') == filtre_cat]
+
+    return render_template('admin_logs.html', logs=logs, filtre_cat=filtre_cat)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
