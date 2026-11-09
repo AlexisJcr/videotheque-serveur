@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('index') }}" class="text-decoration-none text-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Retour au catalogue
+    </a>
+</div>
+
+<div class="card shadow p-4 mb-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-primary">{{ film.get('genre', 'Film') }}</span>
+                <span class="text-secondary">{{ film.get('annee', '') }}</span>
+            </div>
+            <h1 class="display-6 fw-bold text-white mb-2">{{ film.get('titre') }}</h1>
+            <p class="text-info mb-3">Réalisateur : <strong>{{ film.get('realisateur', 'Non spécifié') }}</strong></p>
+            <p class="lead fs-6 text-light opacity-75">{{ film.get('synopsis', 'Pas de description.') }}</p>
+        </div>
+
+        <!-- Boutons d'administration (Modif/Supression) -->
+        {% if session.get('jeton') %}
+        <div class="d-flex gap-2 mt-4">
+            <a href="{{ url_for('admin_modifier', film_id=film.get('id')) }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-pencil me-1"></i>Modifier les infos
+            </a>
+            <form method="POST" action="{{ url_for('admin_supprimer', film_id=film.get('id')) }}"
+                onsubmit="return confirm('Attention : Voulez-vous vraiment supprimer ce film du catalogue ?');">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-trash me-1"></i>Supprimer le film
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div
+            class="col-md-4 border-start border-secondary ps-md-4 mt-4 mt-md-0 d-flex flex-column justify-content-center">
+            <h5 class="fw-bold mb-3"><i class="bi bi-Laptop me-2"></i>Version Numérique (RG3)</h5>
+            {% if film.get('supports', {}).get('numerique', {}).get('disponible') %}
+            <div class="alert alert-info bg-opacity-10 border-info mb-2 small">
+                <i class="bi bi-info-circle me-1"></i>Un support numérique se visionne en direct et ne s'emprunte pas
+                (RG3).
+            </div>
+            <button class="btn btn-info w-100 fw-bold"
+                onclick="alert('Lancement du lecteur de streaming pour {{ film.titre }}...')">
+            </button>
+            {% else %}
+            <p class="text-muted small mb-0">Ce film n'est pas disponible en version dématérialisée.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<h4 class="fw-bold mb-3"><i class="bi bi-disc me-2"></i>Exemplaires Physiques Unitaires (RG4 & RG5)</h4>
+
+<!-- 1. Le Tableau des exemplaires -->
+<div class="card shadow-sm mb-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-hover align-middle mb-0 w-100">
+            <thead class="table-active">
+                <tr>
+                    <th style="width: 25%;">ID Support (Code-barres)</th>
+                    <th style="width: 15%;">Format</th>
+                    <th style="width: 20%;">État actuel</th>
+                    <th style="width: 40%;" class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sup in film.supports.physiques %}
+                <tr>
+                    <td><code class="fs-6 text-light">{{ sup.supportId }}</code></td>
+                    <td><span class="badge bg-secondary">{{ sup.format }}</span></td>
+                    <td>
+                        {% if sup.etat == 'DISPONIBLE' %}
+                            <span class="badge badge-dispo"><i class="bi bi-check-circle me-1"></i>DISPONIBLE</span>
+                        {% elif sup.etat == 'PRETE' %}
+                            <span class="badge badge-prete"><i class="bi bi-clock-history me-1"></i>PRÊTÉ</span>
+                        {% else %}
+                            <span class="badge badge-perdu"><i class="bi bi-exclamation-triangle me-1"></i>{{ sup.etat }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            {% if sup.etat == 'DISPONIBLE' %}
+                                <form method="POST" action="{{ url_for('emprunter') }}" class="m-0">
+                                    <input type="hidden" name="supportId" value="{{ sup.supportId }}">
+                                    <input type="hidden" name="filmId" value="{{ film.id }}">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Emprunter
+                                    </button>
+                                </form>
+                            {% elif sup.etat == 'PRETE' %}
+                                <form method="POST" action="{{ url_for('restituer') }}" class="m-0">
+                                    <input type="hidden" name="supportId" value="{{ sup.supportId }}">
+                                    <input type="hidden" name="filmId" value="{{ film.id }}">
+                                    <button type="submit" class="btn btn-warning btn-sm text-dark">
+                                        <i class="bi bi-arrow-return-left me-1"></i>Restituer
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            {% if session.get('jeton') %}
+                                <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEdit{{ loop.index }}">
+                                    <i class="bi bi-pencil me-1"></i>Modifier
+                                </button>
+
+                                {% if sup.etat != 'PRETE' %}
+                                    <form method="POST" action="{{ url_for('admin_supprimer_support', film_id=film.id, support_id=sup.supportId) }}" class="m-0" onsubmit="return confirm('Supprimer ce support définitivement du stock ?');">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <button class="btn btn-outline-secondary btn-sm" disabled title="Impossible de supprimer un support prêté">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">Aucun support physique référencé pour ce film.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 2. Formulaire d'ajout rapide au stock (si authentifié) -->
+{% if session.get('jeton') %}
+<div class="card shadow-sm mb-4 p-3 border-secondary">
+    <h6 class="fw-bold text-success mb-3"><i class="bi bi-upc-scan me-2"></i>Entrer un nouvel exemplaire en stock</h6>
+    <form method="POST" action="{{ url_for('admin_ajouter_support', film_id=film.id) }}" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small text-muted mb-1">ID Support (Code-barres)</label>
+            <input type="text" name="supportId" class="form-control form-control-sm font-monospace" placeholder="Ex: AVA-DVD-01" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Format</label>
+            <select name="format" class="form-select form-select-sm">
+                <option value="DVD">DVD</option>
+                <option value="Blu-ray">Blu-ray</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">
+                <i class="bi bi-plus-circle me-1"></i>Ajouter au stock
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- 3. Modales d'édition (Placées en dehors du tableau pour éviter le rognage CSS) -->
+{% if session.get('jeton') %}
+    {% for sup in film.supports.physiques %}
+    <div class="modal fade" id="modalEdit{{ loop.index }}" tabindex="-1" aria-labelledby="modalLabel{{ loop.index }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary text-light">
+                <form method="POST" action="{{ url_for('admin_modifier_support', film_id=film.id, support_id=sup.supportId) }}">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title fw-bold" id="modalLabel{{ loop.index }}">
+                            <i class="bi bi-pencil-square text-info me-2"></i>Modifier l'exemplaire
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Code-barres (Support ID)</label>
+                            <input type="text" name="nouveau_supportId" class="form-control font-monospace bg-black text-light border-secondary" value="{{ sup.supportId }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">Format Physique</label>
+                            <select name="format" class="form-select bg-black text-light border-secondary">
+                                <option value="DVD" {% if sup.format == 'DVD' %}selected{% endif %}>DVD</option>
+                                <option value="Blu-ray" {% if sup.format == 'Blu-ray' %}selected{% endif %}>Blu-ray</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-secondary">État actuel</label>
+                            <select name="etat" class="form-select bg-black text-light border-secondary">
+                                <option value="DISPONIBLE" {% if sup.etat == 'DISPONIBLE' %}selected{% endif %}>DISPONIBLE</option>
+                                <option value="PRETE" {% if sup.etat == 'PRETE' %}selected{% endif %}>PRÊTÉ</option>
+                                <option value="PERDU" {% if sup.etat == 'PERDU' %}selected{% endif %}>PERDU</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-info btn-sm fw-bold">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+{% endblock %}

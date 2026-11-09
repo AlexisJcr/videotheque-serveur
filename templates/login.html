@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow p-4">
+            <h3 class="fw-bold mb-3 text-center"><i class="bi bi-shield-lock text-primary me-2"></i>Authentification Membre</h3>
+            <p class="text-secondary small text-center mb-4">
+                Renseignez votre jeton d'accès pour emprunter des supports physiques (Vérification étape 3 du diagramme).
+            </p>
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="mb-3">
+                    <label class="form-label">Nom du membre</label>
+                    <input type="text" name="nom" class="form-control" value="Alexis" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Jeton d'authentification (Token)</label>
+                    <input type="text" name="jeton" class="form-control font-monospace" value="abc123token" required>
+                    <div class="form-text text-info">
+                        Astuce test : utilisez <code>abc123token</code> (valide) ou un faux texte pour tester le rejet 401.
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Activer le jeton en session</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

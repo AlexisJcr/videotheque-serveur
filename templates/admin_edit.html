@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="mb-3">
+            <a href="{{ url_for('detail_film', film_id=film.get('id')) }}" class="text-decoration-none text-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Annuler
+            </a>
+        </div>
+        <div class="card shadow p-4 border-warning">
+            <h3 class="fw-bold mb-4 text-warning"><i class="bi bi-pencil-square me-2"></i>Modifier : {{ film.get('titre') }}</h3>
+            
+            <form method="POST" action="{{ url_for('admin_modifier', film_id=film.get('id')) }}">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Titre du film</label>
+                        <input type="text" name="titre" class="form-control" value="{{ film.get('titre') }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Année</label>
+                        <input type="number" name="annee" class="form-control" value="{{ film.get('annee') }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Réalisateur</label>
+                        <input type="text" name="realisateur" class="form-control" value="{{ film.get('realisateur') }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Genre</label>
+                        <input type="text" name="genre" class="form-control" value="{{ film.get('genre') }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Synopsis</label>
+                        <textarea name="synopsis" class="form-control" rows="4">{{ film.get('synopsis') }}</textarea>
+                    </div>
+
+                    <hr class="border-secondary my-4">
+
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="num_dispo" id="numDispo" 
+                                   {% if film.get('supports', {}).get('numerique', {}).get('disponible') %}checked{% endif %}>
+                            <label class="form-check-label" for="numDispo">Disponible en Streaming Numérique</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">
+                            <i class="bi bi-save me-1"></i>Sauvegarder les modifications (PUT)
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

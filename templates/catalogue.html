@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h2 class="fw-bold mb-0">Catalogue des Médias</h2>
+        <p class="text-secondary mb-0">Consultez la disponibilité en temps réel via l'API REST</p>
+    </div>
+    <div class="col-md-6 mt-3 mt-md-0">
+        <form method="GET" action="{{ url_for('index') }}" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher un titre, réalisateur..." value="{{ search_query }}">
+            <select name="format" class="form-select w-auto">
+                <option value="">Tous les formats</option>
+                <option value="numerique" {% if format_filter == 'numerique' %}selected{% endif %}>Streaming (Numérique)</option>
+                <option value="Blu-ray" {% if format_filter == 'Blu-ray' %}selected{% endif %}>Blu-ray</option>
+                <option value="DVD" {% if format_filter == 'DVD' %}selected{% endif %}>DVD</option>
+            </select>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for film in films %}
+        {% set physiques = film.get('supports', {}).get('physiques', []) %}
+        {% set nb_dispo = physiques | selectattr('etat', 'equalto', 'DISPONIBLE') | list | length %}
+        {% set is_num = film.get('supports', {}).get('numerique', {}).get('disponible', false) %}
+
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-secondary">{{ film.get('genre', 'Cinéma') }}</span>
+                        <span class="text-muted small">{{ film.get('annee', 'N/A') }}</span>
+                    </div>
+                    
+                    <h4 class="card-title fw-bold text-white">{{ film.get('titre') }}</h4>
+                    <p class="text-secondary small mb-2">
+                        <i class="bi bi-camera-reels me-1"></i>Réalisé par {{ film.get('realisateur', 'Non renseigné') }}
+                    </p>
+                    <p class="card-text text-light opacity-75 small flex-grow-1">
+                        {{ film.get('synopsis', 'Aucun synopsis disponible pour ce titre.') }}
+                    </p>
+
+                    <hr class="border-secondary my-3">
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if is_num %}
+                            <span class="badge bg-info bg-opacity-25 text-info border border-info">
+                                <i class="bi bi-cloud-play me-1"></i>Streaming Dispo
+                            </span>
+                        {% endif %}
+
+                        {% if nb_dispo > 0 %}
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success">
+                                <i class="bi bi-disc me-1"></i>{{ nb_dispo }}/{{ physiques|length }} Physique(s) dispo
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger bg-opacity-25 text-danger border border-danger">
+                                <i class="bi bi-x-circle me-1"></i>Rupture physique (0/{{ physiques|length }})
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <a href="{{ url_for('detail_film', film_id=film.get('id')) }}" class="btn btn-outline-primary w-100">
+                        Consulter les supports & Emprunter
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-secondary text-center py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                Aucun film trouvé dans la base JSON.
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
